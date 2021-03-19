@@ -1,5 +1,8 @@
 # Xilinx Virtual Cable Server for ESP32
 
+これは下記の [cinimlさんの実装](https://github.com/ciniml/xvc-esp32)にシリアルアダプタ機能を追加したものです。
+使用ピンの定義を多少変更している他、スタティック IP アドレス指定を追加しています。
+
 ## 概要
 
 Xilinx製FPGAへの書き込みを行うためのプロトコル (XVC : Xilinx Virtual Cable) のESP32向け実装です。
@@ -40,6 +43,14 @@ static constexpr const int tdi_gpio = 25;
 
 コメントにあるように、現状は高速化のためにGPIO0～31までのみ使用可能です。
 
+## hw_server での使用例
+
+Vivado では HARDWARE MANAGER から hw_manager/xvc 接続の設定ができますが、Vitis では hw_manager 指定まででその先の xvc 接続設定はできません。
+そのため、下記の様に hw_manager の起動オプションで接続先となる xvc を指定して別に立ち上げておき、Vitis の Debug Configuration ではその hw_manager への接続を指定することで xvc が使えるようになります。hw_server は Vitis とは別のホストで動かしても構いません。
+
+```
+host:/tools/Xilinx/Vitis/2020.02/bin$ ./hw_server -e "set auto-open-servers xilinx-xvc:192.168.1.41:2542"
+```
 
 ## ライセンス
 

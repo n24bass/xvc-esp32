@@ -5,7 +5,7 @@
  * See Licensing information at End of File.
  */
 
-#include <M5Atom.h>
+// #include <M5Atom.h>
 #include <WiFi.h>
 #include <lwip/sockets.h>
 #include <lwip/netdb.h>
@@ -15,6 +15,12 @@
 #include <cstring>
 #include <memory>
 
+#define XVCD_STATIC_IP
+
+static IPAddress ip(192, 168, 1, 42); // my IP address
+static IPAddress gateway(192, 168, 1, 1);
+static IPAddress netmask(255, 255, 255, 0);
+
 static const char* MY_SSID = "ssid";
 static const char* MY_PASSPHRASE = "wifi_passphrase";
 
@@ -23,10 +29,10 @@ static const char* MY_PASSPHRASE = "wifi_passphrase";
 
 /* GPIO numbers for each signal. Negative values are invalid */
 /* Note that currently only supports GPIOs below 32 to improve performance */
-static constexpr const int tms_gpio = 22;
+static constexpr const int tms_gpio = 21; // 22;
 static constexpr const int tck_gpio = 19;
-static constexpr const int tdo_gpio = 21;
-static constexpr const int tdi_gpio = 25;
+static constexpr const int tdo_gpio = 18; // 21;
+static constexpr const int tdi_gpio = 5; // 25;
 
 //static inline volatile std::uint32_t* gpio_set_reg(std::uint8_t pin) { return pin >= 32 ? &GPIO.out1_w1ts.val : &GPIO.out_w1ts; }
 //static inline volatile std::uint32_t* gpio_clear_reg(std::uint8_t pin) { return pin >= 32 ? &GPIO.out1_w1tc.val : &GPIO.out_w1tc; }
@@ -337,9 +343,35 @@ public:
 
 void setup()
 {
+    Serial.begin(115200); // USB
+    Serial2.begin(115200); // Target
+          
     jtag_init();
 
+#ifdef XVCD_STATIC_IP
+    WiFi.config(ip, gateway, netmask);
+#endif
     WiFi.begin(MY_SSID, MY_PASSPHRASE);
+
+    while (WiFi.status() != WL_CONNECTED) {
+      delay(500);
+      Serial.print(".");
+    }
+
+    Serial.println("WiFi connected");  
+    Serial.println("IP address: ");
+    Serial.println(WiFi.localIP());
+}
+
+void handleSerial() {
+  while (Serial2.available()) {
+    int inByte = Serial2.read();
+    Serial.write(inByte);
+  }
+  while (Serial.available()) {
+    int inByte = Serial.read();
+    Serial2.write(inByte);
+  }
 }
 
 enum class AppState
@@ -378,7 +410,10 @@ void loop()
         }
         break;
     }
+    case AppState::ClientConnected: break;
     }
+
+    handleSerial();
 }
 
 
