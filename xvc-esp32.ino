@@ -44,6 +44,9 @@ static constexpr const int tdi_gpio = 5; // 25;
 /* Transition delay coefficients */
 static const unsigned int jtag_delay = 10;
 
+portTickType Delay1 = 1 / portTICK_RATE_MS; //freeRTOS 用の遅延時間定義
+TaskHandle_t th;
+
 static std::uint32_t jtag_xfer(std::uint_fast8_t n, std::uint32_t tms, std::uint32_t tdi)
 {
   std::uint32_t tdo = 0;
@@ -344,11 +347,25 @@ public:
   }
 };
 
+void handleSerial(void *pvParameters) {
+  while (1) {
+    while (Serial2.available()) {
+      int inByte = Serial2.read();
+      Serial.write(inByte);
+    }
+    while (Serial.available()) {
+      int inByte = Serial.read();
+      Serial2.write(inByte);
+    }
+    vTaskDelay(Delay1);
+  }
+}
+
 void setup()
 {
   Serial.begin(115200); // USB
   Serial2.begin(115200); // Target
-          
+
   jtag_init();
 
 #ifdef XVCD_STATIC_IP
@@ -364,17 +381,8 @@ void setup()
   Serial.println("WiFi connected");  
   Serial.println("IP address: ");
   Serial.println(WiFi.localIP());
-}
 
-void handleSerial() {
-  while (Serial2.available()) {
-    int inByte = Serial2.read();
-    Serial.write(inByte);
-  }
-  while (Serial.available()) {
-    int inByte = Serial.read();
-    Serial2.write(inByte);
-  }
+  xTaskCreatePinnedToCore(handleSerial, "handleSerial", 4096, NULL, 3, &th, 0); //Task1実行
 }
 
 enum class AppState
@@ -415,8 +423,6 @@ void loop()
   }
   case AppState::ClientConnected: break;
   }
-
-  handleSerial();
 }
 
 
